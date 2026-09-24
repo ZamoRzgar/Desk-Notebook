@@ -1,0 +1,137 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-serif: Georgia, Cambria, "Times New Roman", Times, serif;
+}
+
+/* ---------- desk backdrop ---------- */
+.desk-bg {
+  background: radial-gradient(1200px 620px at 50% -12%, #f6f0e1 0%, #e9e1cd 55%, #ded4bd 100%);
+}
+.dark .desk-bg {
+  background: radial-gradient(1200px 620px at 50% -12%, #221c15 0%, #181410 55%, #100d0a 100%);
+}
+
+/* ---------- paper ---------- */
+.paper {
+  background-color: #fdf8ee;
+}
+.dark .paper {
+  background-color: #2a2620;
+}
+
+.paper-left {
+  background-color: #f8f1de;
+  background-image: linear-gradient(to right, transparent 92%, rgba(122, 96, 60, 0.1) 100%);
+}
+.dark .paper-left {
+  background-color: #262119;
+  background-image: linear-gradient(to right, transparent 92%, rgba(0, 0, 0, 0.35) 100%);
+}
+
+/* Ruled lines aligned to the 2rem line-height of the editor text. */
+.paper-lines {
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent calc(2rem - 1px),
+    rgba(122, 96, 60, 0.18) calc(2rem - 1px),
+    rgba(122, 96, 60, 0.18) 2rem
+  );
+  background-position-y: 1.55rem;
+}
+.dark .paper-lines {
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent calc(2rem - 1px),
+    rgba(233, 216, 182, 0.08) calc(2rem - 1px),
+    rgba(233, 216, 182, 0.08) 2rem
+  );
+}
+
+/* ---------- TipTap document typography ---------- */
+.tiptap {
+  outline: none;
+}
+.tiptap p {
+  margin: 0;
+  line-height: 2rem;
+}
+.tiptap h1 {
+  font-family: var(--font-serif);
+  font-size: 1.65rem;
+  font-weight: 700;
+  line-height: 2rem;
+  margin: 0.6rem 0 0.4rem;
+}
+.tiptap h2 {
+  font-family: var(--font-serif);
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 2rem;
+  margin: 0.5rem 0 0.25rem;
+  color: #6b5232;
+}
+.dark .tiptap h2 {
+  color: #d3b98c;
+}
+.tiptap ul {
+  list-style: disc;
+  padding-left: 1.4rem;
+}
+.tiptap ol {
+  list-style: decimal;
+  padding-left: 1.4rem;
+}
+.tiptap li p {
+  line-height: 2rem;
+}
+.tiptap blockquote {
+  border-left: 3px solid rgba(122, 96, 60, 0.4);
+  padding-left: 1rem;
+  font-style: italic;
+}
+.tiptap mark {
+  padding: 0.05em 0.25em;
+  border-radius: 0.25rem;
+  color: inherit;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+.dark .tiptap mark {
+  color: #292524;
+}
+
+/* ---------- transitions ---------- */
+@keyframes page-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.page-in {
+  animation: page-in 0.22s ease-out;
+}
+
+/* ---------- slim scrollbars ---------- */
+.scroll-slim::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.scroll-slim::-webkit-scrollbar-thumb {
+  background: rgba(122, 96, 60, 0.3);
+  border-radius: 999px;
+}
+.dark .scroll-slim::-webkit-scrollbar-thumb {
+  background: rgba(233, 216, 182, 0.18);
+}
+.scroll-slim::-webkit-scrollbar-track {
+  background: transparent;
+}
