@@ -1,4 +1,4 @@
-# Folio — Desk Notebook
+# Desk Notebook
 
 A note-taking app that looks like a physical book. Notes are organized as
 **Book → Sections (colored binder tabs) → Pages**, with rich text, multi-color
