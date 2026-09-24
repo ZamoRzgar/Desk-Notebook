@@ -8,7 +8,7 @@ import { PageEditor } from './PageEditor';
  * the active page on the right, and section tabs sticking out the right edge.
  */
 export function BookView() {
-  const { book, section, page, createPage } = useApp();
+  const { section, page, createPage } = useApp();
 
   return (
     <main className="flex min-h-0 flex-1 items-stretch justify-center px-6 pb-8 pt-1 sm:pl-12 sm:pr-44">
@@ -36,12 +36,18 @@ export function BookView() {
                   <p className="font-serif text-xl italic text-stone-400 dark:text-stone-500">
                     A fresh page is waiting for ink.
                   </p>
-                  <button
-                    onClick={createPage}
-                    className="rounded-lg bg-stone-800 px-4 py-2 text-sm font-medium text-[#fdf8ee] shadow-sm transition-colors hover:bg-stone-700 dark:bg-[#e9dfc8] dark:text-stone-900 dark:hover:bg-white"
-                  >
-                    Write the first page of {section?.name ?? book.title}
-                  </button>
+                  {section ? (
+                    <button
+                      onClick={createPage}
+                      className="rounded-lg bg-stone-800 px-4 py-2 text-sm font-medium text-[#fdf8ee] shadow-sm transition-colors hover:bg-stone-700 dark:bg-[#e9dfc8] dark:text-stone-900 dark:hover:bg-white"
+                    >
+                      Write the first page of {section.name}
+                    </button>
+                  ) : (
+                    <p className="text-sm text-stone-400 dark:text-stone-500">
+                      Add a section with the + tab on the right edge first.
+                    </p>
+                  )}
                 </div>
               )}
             </section>

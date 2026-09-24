@@ -135,3 +135,78 @@
 .scroll-slim::-webkit-scrollbar-track {
   background: transparent;
 }
+
+/* ---------- print / export ---------- */
+.print-root {
+  display: none;
+}
+
+@media print {
+  .screen-root {
+    display: none !important;
+  }
+  .print-root {
+    display: block !important;
+    background: #ffffff;
+    color: #1c1917;
+    font-family: var(--font-serif);
+    max-width: 42rem;
+    margin: 0 auto;
+    padding: 1rem 0;
+  }
+  .print-doc-header {
+    margin-bottom: 1.5rem;
+  }
+  .print-eyebrow {
+    font-family: var(--font-sans);
+    font-size: 0.7rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: #78716c;
+    margin: 0 0 0.25rem;
+  }
+  .print-doc-title {
+    font-size: 1.9rem;
+    font-weight: 700;
+    line-height: 1.25;
+    margin: 0 0 0.5rem;
+  }
+  .print-page {
+    break-inside: avoid-page;
+    margin-bottom: 2rem;
+  }
+  .print-page-title {
+    font-size: 1.4rem;
+    font-weight: 700;
+    margin: 1.5rem 0 0.25rem;
+    padding-top: 1rem;
+    border-top: 1px solid #d6d3d1;
+  }
+  .print-tags {
+    font-family: var(--font-sans);
+    font-size: 0.72rem;
+    color: #78716c;
+    margin: 0 0 0.75rem;
+  }
+  .print-content p {
+    line-height: 1.7;
+    margin: 0 0 0.4rem;
+  }
+  .print-content h1,
+  .print-content h2,
+  .print-content h3 {
+    color: #44403c;
+    margin: 0.9rem 0 0.3rem;
+  }
+  .print-content ul,
+  .print-content ol {
+    margin: 0.3rem 0 0.6rem;
+  }
+  .print-content mark {
+    padding: 0.05em 0.25em;
+    border-radius: 0.2em;
+    color: #1c1917;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}

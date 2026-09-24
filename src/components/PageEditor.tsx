@@ -7,6 +7,7 @@ import type { Page } from '../types';
 import { HIGHLIGHT_COLORS } from '../types';
 import { useApp } from '../store/AppContext';
 import { TagChip } from './TagChip';
+import { ExportMenu } from './ExportMenu';
 
 const AUTOSAVE_MS = 500;
 
@@ -223,15 +224,20 @@ export function PageEditor({ page }: { page: Page }) {
 
   return (
     <div className="scroll-slim h-full overflow-y-auto">
-      <div className="px-10 pt-7">
-        <input
-          value={page.title}
-          onChange={(e) => renamePage(page.id, e.target.value)}
-          placeholder="Untitled page"
-          aria-label="Page title"
-          className="w-full bg-transparent font-serif text-3xl font-bold text-stone-800 placeholder-stone-400/70 outline-none dark:text-[#e9dfc8] dark:placeholder-stone-500"
-        />
-        <TagEditor page={page} />
+      <div className="flex items-start gap-3 px-10 pt-7">
+        <div className="min-w-0 flex-1">
+          <input
+            value={page.title}
+            onChange={(e) => renamePage(page.id, e.target.value)}
+            placeholder="Untitled page"
+            aria-label="Page title"
+            className="w-full bg-transparent font-serif text-3xl font-bold text-stone-800 placeholder-stone-400/70 outline-none dark:text-[#e9dfc8] dark:placeholder-stone-500"
+          />
+          <TagEditor page={page} />
+        </div>
+        <div className="mt-2 shrink-0">
+          <ExportMenu />
+        </div>
       </div>
 
       {editor && (

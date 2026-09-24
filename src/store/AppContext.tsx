@@ -14,7 +14,10 @@ import { buildSeedData } from './seed';
 
 type Theme = 'light' | 'dark';
 
+export type PrintTarget = { kind: 'page' } | { kind: 'section' };
+
 interface AppContextValue {
+  ready: boolean;
   books: Book[];
   book: Book;
   section: Section | null;
@@ -25,16 +28,27 @@ interface AppContextValue {
   tagFilter: string | null;
   allTags: string[];
   theme: Theme;
+  printTarget: PrintTarget | null;
   selectBook(id: string): void;
   selectSection(id: string): void;
   selectPage(id: string): void;
+  /** Jump straight to a section + page (used by search results). */
+  openPage(sectionId: string, pageId: string): void;
   createSection(name: string, color: string): void;
+  renameSection(sectionId: string, name: string, color: string): void;
+  deleteSection(sectionId: string): void;
   createPage(): void;
+  deletePage(pageId: string): void;
   updatePageContent(pageId: string, content: JSONContent): void;
   renamePage(pageId: string, title: string): void;
   addTag(pageId: string, tag: string): void;
   removeTag(pageId: string, tag: string): void;
+  createBook(title: string): void;
+  renameBook(bookId: string, title: string): void;
+  /** Returns false when the book cannot be deleted (last remaining book). */
+  deleteBook(bookId: string): boolean;
   setTagFilter(tag: string | null): void;
+  setPrintTarget(target: PrintTarget | null): void;
   toggleTheme(): void;
 }
 
@@ -42,13 +56,8 @@ const AppContext = createContext<AppContextValue | null>(null);
 
 const storage: StorageBackend = createStorage();
 
-function loadInitialData(): PersistedData {
-  const existing = storage.read();
-  if (existing && existing.books.length > 0) return existing;
-  const seeded = buildSeedData();
-  storage.write(seeded);
-  return seeded;
-}
+const THEME_KEY = 'desk-notebook:theme';
+const LEGACY_THEME_KEY = 'folio-notes:theme';
 
 function mapBook(data: PersistedData, bookId: string, fn: (b: Book) => Book): PersistedData {
   return { ...data, books: data.books.map((b) => (b.id === bookId ? fn(b) : b)) };
@@ -63,87 +72,150 @@ function mapPage(section: Section, pageId: string, fn: (p: Page) => Page): Secti
 }
 
 export function AppProvider({ children }: { children: ReactNode }) {
-  const [data, setData] = useState<PersistedData>(loadInitialData);
-  const [activeBookId, setActiveBookId] = useState(() => data.books[0].id);
-  const [activeSectionId, setActiveSectionId] = useState<string | null>(
-    () => data.books[0].sections[0]?.id ?? null,
-  );
-  const [activePageId, setActivePageId] = useState<string | null>(
-    () => data.books[0].sections[0]?.pages[0]?.id ?? null,
-  );
+  const [data, setData] = useState<PersistedData | null>(null);
+  const [activeBookId, setActiveBookId] = useState<string | null>(null);
+  const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
+  const [activePageId, setActivePageId] = useState<string | null>(null);
   const [tagFilter, setTagFilter] = useState<string | null>(null);
+  const [printTarget, setPrintTarget] = useState<PrintTarget | null>(null);
   const [theme, setTheme] = useState<Theme>(() =>
     document.documentElement.classList.contains('dark') ? 'dark' : 'light',
   );
 
+  // Load persisted data (SQLite via IPC in Electron, localStorage in the
+  // browser); seed sample content on first run.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      let loaded = await storage.read();
+      if (!loaded) {
+        loaded = buildSeedData();
+        void storage.write(loaded);
+      }
+      if (cancelled) return;
+      setData(loaded);
+      const firstBook = loaded.books[0];
+      setActiveBookId(firstBook.id);
+      setActiveSectionId(firstBook.sections[0]?.id ?? null);
+      setActivePageId(firstBook.sections[0]?.pages[0]?.id ?? null);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   // Debounced write-through persistence.
   useEffect(() => {
-    const t = window.setTimeout(() => storage.write(data), 250);
+    if (!data) return;
+    const t = window.setTimeout(() => void storage.write(data), 250);
     return () => window.clearTimeout(t);
   }, [data]);
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark');
     try {
-      localStorage.setItem('folio-notes:theme', theme);
+      localStorage.setItem(THEME_KEY, theme);
+      localStorage.removeItem(LEGACY_THEME_KEY);
     } catch {
       /* ignore */
     }
   }, [theme]);
 
-  const book = data.books.find((b) => b.id === activeBookId) ?? data.books[0];
-  const section = book.sections.find((s) => s.id === activeSectionId) ?? book.sections[0] ?? null;
-  const page =
-    section?.pages.find((p) => p.id === activePageId) ?? section?.pages[0] ?? null;
+  const book =
+    data?.books.find((b) => b.id === activeBookId) ?? data?.books[0] ?? null;
+  const section = book?.sections.find((s) => s.id === activeSectionId) ?? book?.sections[0] ?? null;
+  const page = section?.pages.find((p) => p.id === activePageId) ?? section?.pages[0] ?? null;
 
   const allTags = useMemo(() => {
     const tags = new Set<string>();
-    for (const b of data.books)
+    for (const b of data?.books ?? [])
       for (const s of b.sections) for (const p of s.pages) for (const t of p.tags) tags.add(t);
     return [...tags].sort((a, b) => a.localeCompare(b));
   }, [data]);
 
   const selectBook = useCallback(
     (id: string) => {
-      const target = data.books.find((b) => b.id === id);
+      const target = data?.books.find((b) => b.id === id);
       if (!target) return;
       setActiveBookId(id);
       setActiveSectionId(target.sections[0]?.id ?? null);
       setActivePageId(target.sections[0]?.pages[0]?.id ?? null);
     },
-    [data.books],
+    [data],
   );
 
   const selectSection = useCallback(
     (id: string) => {
       setActiveSectionId(id);
-      const target = book.sections.find((s) => s.id === id);
+      const target = book?.sections.find((s) => s.id === id);
       setActivePageId(target?.pages[0]?.id ?? null);
     },
-    [book.sections],
+    [book],
   );
 
   const selectPage = useCallback((id: string) => setActivePageId(id), []);
 
+  const openPage = useCallback((sectionId: string, pageId: string) => {
+    setActiveSectionId(sectionId);
+    setActivePageId(pageId);
+  }, []);
+
   const createSection = useCallback(
     (name: string, color: string) => {
       const trimmed = name.trim();
-      if (!trimmed) return;
+      if (!trimmed || !book) return;
       const id = crypto.randomUUID();
       setData((prev) =>
-        mapBook(prev, activeBookId, (b) => ({
-          ...b,
-          sections: [...b.sections, { id, name: trimmed, color, pages: [] }],
-        })),
+        prev
+          ? mapBook(prev, book.id, (b) => ({
+              ...b,
+              sections: [...b.sections, { id, name: trimmed, color, pages: [] }],
+            }))
+          : prev,
       );
       setActiveSectionId(id);
       setActivePageId(null);
     },
-    [activeBookId],
+    [book],
+  );
+
+  const renameSection = useCallback(
+    (sectionId: string, name: string, color: string) => {
+      const trimmed = name.trim();
+      if (!trimmed || !book) return;
+      setData((prev) =>
+        prev
+          ? mapBook(prev, book.id, (b) =>
+              mapSection(b, sectionId, (s) => ({ ...s, name: trimmed, color })),
+            )
+          : prev,
+      );
+    },
+    [book],
+  );
+
+  const deleteSection = useCallback(
+    (sectionId: string) => {
+      if (!book) return;
+      setData((prev) =>
+        prev
+          ? mapBook(prev, book.id, (b) => ({
+              ...b,
+              sections: b.sections.filter((s) => s.id !== sectionId),
+            }))
+          : prev,
+      );
+      if (sectionId === section?.id) {
+        const remaining = book.sections.filter((s) => s.id !== sectionId);
+        setActiveSectionId(remaining[0]?.id ?? null);
+        setActivePageId(remaining[0]?.pages[0]?.id ?? null);
+      }
+    },
+    [book, section],
   );
 
   const createPage = useCallback(() => {
-    if (!section) return;
+    if (!book || !section) return;
     const id = crypto.randomUUID();
     const nowIso = new Date().toISOString();
     const newPage: Page = {
@@ -155,25 +227,53 @@ export function AppProvider({ children }: { children: ReactNode }) {
       updatedAt: nowIso,
     };
     setData((prev) =>
-      mapBook(prev, activeBookId, (b) =>
-        mapSection(b, section.id, (s) => ({ ...s, pages: [...s.pages, newPage] })),
-      ),
+      prev
+        ? mapBook(prev, book.id, (b) =>
+            mapSection(b, section.id, (s) => ({ ...s, pages: [...s.pages, newPage] })),
+          )
+        : prev,
     );
     setActivePageId(id);
-  }, [activeBookId, section]);
+  }, [book, section]);
+
+  const deletePage = useCallback(
+    (pageId: string) => {
+      if (!book) return;
+      setData((prev) =>
+        prev
+          ? mapBook(prev, book.id, (b) => ({
+              ...b,
+              sections: b.sections.map((s) =>
+                s.pages.some((p) => p.id === pageId)
+                  ? { ...s, pages: s.pages.filter((p) => p.id !== pageId) }
+                  : s,
+              ),
+            }))
+          : prev,
+      );
+      if (pageId === page?.id && section) {
+        const remaining = section.pages.filter((p) => p.id !== pageId);
+        setActivePageId(remaining[0]?.id ?? null);
+      }
+    },
+    [book, section, page],
+  );
 
   const updatePageInActiveBook = useCallback(
     (pageId: string, fn: (p: Page) => Page) => {
+      if (!book) return;
       setData((prev) =>
-        mapBook(prev, activeBookId, (b) => ({
-          ...b,
-          sections: b.sections.map((s) =>
-            s.pages.some((p) => p.id === pageId) ? mapPage(s, pageId, fn) : s,
-          ),
-        })),
+        prev
+          ? mapBook(prev, book.id, (b) => ({
+              ...b,
+              sections: b.sections.map((s) =>
+                s.pages.some((p) => p.id === pageId) ? mapPage(s, pageId, fn) : s,
+              ),
+            }))
+          : prev,
       );
     },
-    [activeBookId],
+    [book],
   );
 
   const updatePageContent = useCallback(
@@ -212,12 +312,58 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [updatePageInActiveBook],
   );
 
+  const createBook = useCallback((title: string) => {
+    const trimmed = title.trim();
+    if (!trimmed) return;
+    const id = crypto.randomUUID();
+    const newBook: Book = { id, title: trimmed, sections: [] };
+    setData((prev) => (prev ? { ...prev, books: [...prev.books, newBook] } : prev));
+    setActiveBookId(id);
+    setActiveSectionId(null);
+    setActivePageId(null);
+  }, []);
+
+  const renameBook = useCallback((bookId: string, title: string) => {
+    const trimmed = title.trim();
+    if (!trimmed) return;
+    setData((prev) =>
+      prev ? mapBook(prev, bookId, (b) => ({ ...b, title: trimmed })) : prev,
+    );
+  }, []);
+
+  const deleteBook = useCallback(
+    (bookId: string): boolean => {
+      if (!data || data.books.length <= 1) return false;
+      const remaining = data.books.filter((b) => b.id !== bookId);
+      setData({ ...data, books: remaining });
+      if (bookId === book?.id) {
+        const next = remaining[0];
+        setActiveBookId(next.id);
+        setActiveSectionId(next.sections[0]?.id ?? null);
+        setActivePageId(next.sections[0]?.pages[0]?.id ?? null);
+      }
+      return true;
+    },
+    [data, book],
+  );
+
   const toggleTheme = useCallback(
     () => setTheme((t) => (t === 'dark' ? 'light' : 'dark')),
     [],
   );
 
+  if (!data || !book) {
+    return (
+      <div className="desk-bg flex h-screen items-center justify-center">
+        <p className="font-serif text-xl italic text-stone-500 dark:text-stone-400">
+          Opening your notebook…
+        </p>
+      </div>
+    );
+  }
+
   const value: AppContextValue = {
+    ready: true,
     books: data.books,
     book,
     section,
@@ -228,16 +374,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
     tagFilter,
     allTags,
     theme,
+    printTarget,
     selectBook,
     selectSection,
     selectPage,
+    openPage,
     createSection,
+    renameSection,
+    deleteSection,
     createPage,
+    deletePage,
     updatePageContent,
     renamePage,
     addTag,
     removeTag,
+    createBook,
+    renameBook,
+    deleteBook,
     setTagFilter,
+    setPrintTarget,
     toggleTheme,
   };
 

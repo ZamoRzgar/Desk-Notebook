@@ -1,11 +1,15 @@
-const { contextBridge } = require('electron');
+const { contextBridge, ipcRenderer } = require('electron');
 
-// Reserved for future native capabilities (SQLite persistence, file export).
-// The UI milestone deliberately uses no Electron APIs so the browser preview works.
-contextBridge.exposeInMainWorld('folio', {
+contextBridge.exposeInMainWorld('deskNotebook', {
   platform: process.platform,
   versions: {
     electron: process.versions.electron,
     chrome: process.versions.chrome,
+  },
+  // SQLite-backed storage in the main process. Mirrors the renderer's
+  // StorageBackend interface (read returns the persisted JSON string).
+  storage: {
+    read: () => ipcRenderer.invoke('storage:read'),
+    write: (json) => ipcRenderer.invoke('storage:write', json),
   },
 });

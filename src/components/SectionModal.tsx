@@ -1,23 +1,32 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { SECTION_COLORS } from '../types';
 import { useApp } from '../store/AppContext';
 
-interface NewSectionModalProps {
+interface SectionModalProps {
   open: boolean;
   onClose: () => void;
+  /** When set, the modal edits this section instead of creating a new one. */
+  editing?: { id: string; name: string; color: string } | null;
 }
 
-export function NewSectionModal({ open, onClose }: NewSectionModalProps) {
-  const { createSection } = useApp();
+export function SectionModal({ open, onClose, editing = null }: SectionModalProps) {
+  const { createSection, renameSection } = useApp();
   const [name, setName] = useState('');
   const [color, setColor] = useState<string>(SECTION_COLORS[4]);
+
+  useEffect(() => {
+    if (open) {
+      setName(editing?.name ?? '');
+      setColor(editing?.color ?? SECTION_COLORS[4]);
+    }
+  }, [open, editing]);
 
   if (!open) return null;
 
   const submit = () => {
     if (!name.trim()) return;
-    createSection(name, color);
-    setName('');
+    if (editing) renameSection(editing.id, name, color);
+    else createSection(name, color);
     onClose();
   };
 
@@ -31,7 +40,7 @@ export function NewSectionModal({ open, onClose }: NewSectionModalProps) {
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="font-serif text-xl font-bold text-stone-800 dark:text-[#e9dfc8]">
-          New section
+          {editing ? 'Edit section' : 'New section'}
         </h2>
         <p className="mt-1 text-sm text-stone-500 dark:text-stone-400">
           A class, a project, a chapter — it gets its own tab.
@@ -41,7 +50,10 @@ export function NewSectionModal({ open, onClose }: NewSectionModalProps) {
           autoFocus
           value={name}
           onChange={(e) => setName(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && submit()}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') submit();
+            if (e.key === 'Escape') onClose();
+          }}
           placeholder="e.g. Chemistry"
           className="mt-4 w-full rounded-lg border border-stone-300 bg-white/80 px-3 py-2 text-sm text-stone-800 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-amber-500/40 dark:border-stone-600 dark:bg-white/5 dark:text-stone-100"
         />
@@ -77,7 +89,7 @@ export function NewSectionModal({ open, onClose }: NewSectionModalProps) {
             disabled={!name.trim()}
             className="rounded-lg bg-stone-800 px-3.5 py-2 text-sm font-medium text-[#fdf8ee] shadow-sm transition-colors hover:bg-stone-700 disabled:opacity-40 dark:bg-[#e9dfc8] dark:text-stone-900 dark:hover:bg-white"
           >
-            Create section
+            {editing ? 'Save changes' : 'Create section'}
           </button>
         </div>
       </div>
