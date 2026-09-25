@@ -4,6 +4,10 @@ const fs = require('fs');
 
 const DATA_KEY = 'data:v1';
 
+// Keep the data directory stable (~/.config/desk-notebook) regardless of the
+// packaged productName ("Desk Notebook").
+app.setName('desk-notebook');
+
 let db = null;
 
 function initDb() {

@@ -33,6 +33,59 @@ VITE_DEV_SERVER_URL=http://localhost:5173 npm run electron:start   # terminal 2
 
 `npm run electron:dev` is a shortcut for `npm run build && electron .`.
 
+## Install as desktop app (Linux)
+
+```bash
+npm run dist:linux     # type-check + vite build + electron-builder (AppImage + unpacked dir)
+```
+
+Artifacts land in `release/`:
+- `release/Desk Notebook-<version>.AppImage` — portable single-file app
+- `release/linux-unpacked/` — unpacked build (`dir` target), fallback if the
+  AppImage can't run (e.g. no FUSE)
+
+Install the AppImage and register a launcher:
+
+```bash
+mkdir -p ~/Applications ~/.local/share/applications ~/.local/share/icons
+cp "release/Desk Notebook-"*.AppImage ~/Applications/desk-notebook.AppImage
+chmod +x ~/Applications/desk-notebook.AppImage
+cp build/icon.png ~/.local/share/icons/desk-notebook.png
+
+cat > ~/.local/share/applications/desk-notebook.desktop <<'EOF'
+[Desktop Entry]
+Type=Application
+Name=Desk Notebook
+Comment=A cozy book-style notebook
+Exec=/home/zamo/Applications/desk-notebook.AppImage
+Icon=/home/zamo/.local/share/icons/desk-notebook.png
+Terminal=false
+Categories=Office;Utility;
+Keywords=notes;notebook;writing;
+StartupWMClass=desk-notebook
+EOF
+update-desktop-database ~/.local/share/applications
+```
+
+"Desk Notebook" then appears in the apps menu (log out/in if it doesn't show
+up immediately). To update later, rebuild and overwrite
+`~/Applications/desk-notebook.AppImage` — user data lives separately in
+`~/.config/desk-notebook/` and is untouched.
+
+Notes:
+- electron-builder downloads (Electron, appimagetool) honor the
+  `ELECTRON_MIRROR` / `ELECTRON_BUILDER_BINARIES_MIRROR` env vars — useful on
+  networks where GitHub releases are unreachable (e.g.
+  `https://npmmirror.com/mirrors/electron/` and
+  `https://npmmirror.com/mirrors/electron-builder-binaries/`).
+- `npmRebuild` is disabled in the builder config; better-sqlite3 must already
+  be compiled for Electron's ABI (see the rebuild command below) before
+  packaging.
+- The launcher uses no `--no-sandbox` flag: the packaged app runs its sandbox
+  through user namespaces on this machine. If a different machine rejects the
+  sandbox, append `--no-sandbox` to the `Exec` line as a last resort.
+
+
 Data lives in a SQLite database at Electron's `userData` path
 (e.g. `~/.config/desk-notebook/desk-notebook.db` on Linux). The renderer uses
 the SQLite backend automatically when running inside Electron
@@ -63,6 +116,8 @@ renderer console output and storage state to stdout.
 | `npm run preview`        | Serve the production build in a browser                 |
 | `npm run electron:start` | Launch Electron against `dist/` (build first)           |
 | `npm run electron:dev`   | Build, then launch Electron                             |
+| `npm run dist`           | Build + package with electron-builder (all platforms)   |
+| `npm run dist:linux`     | Build + package AppImage and unpacked dir to `release/` |
 
 ## Features
 

@@ -9,7 +9,9 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "electron:start": "electron .",
-    "electron:dev": "npm run build && electron ."
+    "electron:dev": "npm run build && electron .",
+    "dist": "npm run build && electron-builder",
+    "dist:linux": "npm run build && electron-builder --linux"
   },
   "dependencies": {
     "@tiptap/extension-highlight": "^3.0.0",
@@ -29,5 +31,31 @@
     "tailwindcss": "^4.0.0",
     "typescript": "^5.9.0",
     "vite": "^7.0.0"
+  },
+  "build": {
+    "appId": "com.desknotebook.app",
+    "productName": "Desk Notebook",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**",
+      "electron/**",
+      "package.json"
+    ],
+    "asarUnpack": [
+      "node_modules/better-sqlite3/**"
+    ],
+    "npmRebuild": false,
+    "linux": {
+      "category": "Utility;Office",
+      "target": [
+        "AppImage",
+        "dir"
+      ],
+      "icon": "build/icon.png",
+      "synopsis": "A cozy book-style notebook",
+      "description": "Desk Notebook — a note-taking app that looks like a physical book, with binder-tab sections, rich text, highlights, and tags."
+    }
   }
 }
