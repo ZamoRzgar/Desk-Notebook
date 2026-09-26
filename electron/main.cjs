@@ -40,6 +40,37 @@ function registerIpc() {
   });
 }
 
+function setupAutoUpdates() {
+  if (!app.isPackaged) return;
+  let autoUpdater;
+  try {
+    autoUpdater = require('electron-updater').autoUpdater;
+  } catch (err) {
+    console.log('[desk-notebook] auto-updater unavailable:', err?.message ?? err);
+    return;
+  }
+  autoUpdater.autoDownload = true;
+  autoUpdater.on('update-available', (info) => {
+    console.log('[desk-notebook] update available:', info.version);
+  });
+  autoUpdater.on('update-downloaded', async (info) => {
+    const { response } = await dialog.showMessageBox({
+      type: 'info',
+      buttons: ['Restart now', 'Later'],
+      defaultId: 0,
+      cancelId: 1,
+      title: 'Update ready',
+      message: `Desk Notebook ${info.version} is ready`,
+      detail: 'The update has been downloaded. Restart to apply it — your notes stay untouched.',
+    });
+    if (response === 0) autoUpdater.quitAndInstall();
+  });
+  autoUpdater.on('error', (err) => {
+    console.log('[desk-notebook] auto-update error:', err?.message ?? err);
+  });
+  autoUpdater.checkForUpdates().catch(() => {});
+}
+
 function createWindow() {
   const win = new BrowserWindow({
     width: 1320,
@@ -103,6 +134,7 @@ app.whenReady().then(() => {
   }
   registerIpc();
   createWindow();
+  setupAutoUpdates();
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });

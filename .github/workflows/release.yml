@@ -1,0 +1,35 @@
+name: Release
+
+# Push a version tag (e.g. v0.1.0) to build Windows + Linux installers and
+# publish them to a GitHub Release. The app's auto-updater reads these releases.
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # electron-builder --publish creates the GitHub Release (if missing) and
+      # uploads the installers + update manifests (latest.yml / latest-linux.yml).
+      # On Windows it also rebuilds better-sqlite3 for the Windows Electron ABI.
+      - run: npx electron-builder --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

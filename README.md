@@ -182,6 +182,40 @@ src/
 - Storage is whole-library JSON in a single SQLite `kv` row (fine at this
   scale; per-page tables are a future optimization). Browser mode is limited
   by the ~5 MB localStorage cap.
-- No Electron packaging (electron-builder) yet; the app runs via `electron .`.
 - No undo for deletions; no drag-to-reorder for pages/sections.
 - Search covers the active book only.
+
+## Releases, installers & auto-updates
+
+Electron Builder produces three installers (see the `build` section of
+`package.json`): Windows `nsis` (`.exe` setup wizard), Linux `AppImage`, and
+Linux `.deb`. The packaged app includes `electron-updater`, which checks
+GitHub Releases on startup and offers to restart into a new version
+(notes data is never touched by updates). **Auto-updates require the GitHub
+repo to be public.**
+
+Windows builds run in CI (GitHub Actions) because the better-sqlite3 native
+module must be compiled on Windows; see `.github/workflows/release.yml`.
+
+To cut a release:
+
+```bash
+# 1. commit everything, then bump the version + tag
+npm version patch          # or minor / major — updates package.json + tags vX.Y.Z
+git push origin main --follow-tags
+
+# 2. GitHub Actions builds Windows + Linux installers and publishes them
+#    to a GitHub Release automatically. Installed apps pick it up on next start.
+```
+
+Local Linux-only build (needs the npmmirror env vars on networks where
+GitHub is proxied):
+
+```bash
+ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/ \
+ELECTRON_BUILDER_BINARIES_MIRROR=https://npmmirror.com/mirrors/electron-builder-binaries/ \
+npx electron-builder --linux
+# outputs: release/Desk Notebook-<version>.AppImage, release/desk-notebook_<version>_amd64.deb
+```
+
+Install the `.deb` system-wide with `sudo apt install ./release/desk-notebook_*_amd64.deb`.
