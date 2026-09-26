@@ -8,6 +8,7 @@ import { HIGHLIGHT_COLORS } from '../types';
 import { useApp } from '../store/AppContext';
 import { TagChip } from './TagChip';
 import { ExportMenu } from './ExportMenu';
+import { SymbolMenu } from './SymbolMenu';
 
 const AUTOSAVE_MS = 500;
 
@@ -63,6 +64,8 @@ function Toolbar({ editor }: { editor: Editor }) {
       >
         <span className="line-through">S</span>
       </ToolbarButton>
+
+      <SymbolMenu editor={editor} />
 
       <div className="mx-1 h-4 w-px bg-stone-300 dark:bg-stone-600" />
 
