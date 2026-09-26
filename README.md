@@ -6,6 +6,11 @@ highlighting, tags, full-text search, print/PDF export, and a cozy dark mode.
 
 Runs in the browser (localStorage) and as an Electron desktop app (SQLite).
 
+<p align="center">
+  <img src="docs/screenshots/light.png" alt="Desk Notebook in light mode" width="49%" />
+  <img src="docs/screenshots/dark.png" alt="Desk Notebook in dark mode" width="49%" />
+</p>
+
 ## Quick start (browser preview)
 
 ```bash
@@ -57,8 +62,8 @@ cat > ~/.local/share/applications/desk-notebook.desktop <<'EOF'
 Type=Application
 Name=Desk Notebook
 Comment=A cozy book-style notebook
-Exec=/home/zamo/Applications/desk-notebook.AppImage
-Icon=/home/zamo/.local/share/icons/desk-notebook.png
+Exec=~/Applications/desk-notebook.AppImage
+Icon=~/.local/share/icons/desk-notebook.png
 Terminal=false
 Categories=Office;Utility;
 Keywords=notes;notebook;writing;
