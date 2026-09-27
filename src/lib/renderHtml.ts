@@ -56,6 +56,14 @@ function renderNode(node: JSONContent): string {
       return '<br>';
     case 'codeBlock':
       return `<pre><code>${children}</code></pre>`;
+    case 'table':
+      return `<table><tbody>${children}</tbody></table>`;
+    case 'tableRow':
+      return `<tr>${children}</tr>`;
+    case 'tableHeader':
+      return `<th>${children}</th>`;
+    case 'tableCell':
+      return `<td>${children}</td>`;
     default:
       return children;
   }

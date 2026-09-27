@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { EditorContent, useEditor, type Editor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Highlight from '@tiptap/extension-highlight';
+import { TableKit } from '@tiptap/extension-table';
 import type { JSONContent } from '@tiptap/core';
 import type { Page } from '../types';
 import { HIGHLIGHT_COLORS } from '../types';
@@ -111,6 +112,19 @@ function Toolbar({ editor }: { editor: Editor }) {
         </svg>
       </ToolbarButton>
 
+      <ToolbarButton
+        title="Insert table"
+        active={editor.isActive('table')}
+        onClick={() =>
+          editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()
+        }
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className="h-4 w-4">
+          <rect x="3.5" y="4.5" width="17" height="15" rx="1.5" />
+          <path d="M3.5 9.5h17M3.5 14.5h17M9.5 4.5v15M15.5 4.5v15" />
+        </svg>
+      </ToolbarButton>
+
       <div className="mx-1 h-4 w-px bg-stone-300 dark:bg-stone-600" />
 
       {HIGHLIGHT_COLORS.map((c) => {
@@ -194,7 +208,12 @@ export function PageEditor({ page }: { page: Page }) {
   updateRef.current = updatePageContent;
 
   const editor = useEditor({
-    extensions: [StarterKit, Highlight.configure({ multicolor: true })],
+    extensions: [
+      StarterKit,
+      Highlight.configure({ multicolor: true }),
+      // Fluid tables (no fixed column widths) so they shrink to fit the page.
+      TableKit.configure({ table: { resizable: false } }),
+    ],
     content: page.content,
     editorProps: {
       attributes: {

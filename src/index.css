@@ -121,6 +121,47 @@
   background-color: rgba(96, 165, 250, 0.3) !important;
 }
 
+/* ---------- tables ---------- */
+/* table-layout: fixed + width 100% keeps pasted tables inside the page:
+   wide tables shrink proportionally instead of overflowing. */
+.tiptap .tableWrapper {
+  max-width: 100%;
+  overflow-x: auto;
+  margin: 0.4em 0 0.8em;
+}
+.tiptap table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-size: 0.88em;
+  line-height: 1.45;
+}
+.tiptap th,
+.tiptap td {
+  border: 1px solid rgba(122, 96, 60, 0.35);
+  padding: 0.3em 0.55em;
+  vertical-align: top;
+  word-break: break-word;
+}
+.tiptap th {
+  background: rgba(122, 96, 60, 0.12);
+  font-weight: 700;
+  text-align: left;
+}
+.dark .tiptap th,
+.dark .tiptap td {
+  border-color: rgba(233, 223, 200, 0.22);
+}
+.dark .tiptap th {
+  background: rgba(233, 223, 200, 0.08);
+}
+.tiptap .selectedCell {
+  background: rgba(245, 158, 11, 0.16);
+}
+.tiptap .selectedCell::after {
+  content: none;
+}
+
 /* ---------- transitions ---------- */
 @keyframes page-in {
   from {
@@ -222,6 +263,24 @@
     padding: 0.05em 0.25em;
     border-radius: 0.2em;
     color: #1c1917;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .print-content table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 0.85rem;
+    margin: 0.5rem 0 1rem;
+  }
+  .print-content th,
+  .print-content td {
+    border: 1px solid #a8a29e;
+    padding: 0.3em 0.6em;
+    text-align: left;
+    vertical-align: top;
+  }
+  .print-content th {
+    background: #f0ece1;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
