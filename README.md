@@ -1,226 +1,106 @@
 # Desk Notebook
 
-A note-taking app that looks like a physical book. Notes are organized as
-**Book → Sections (colored binder tabs) → Pages**, with rich text, multi-color
-highlighting, tags, full-text search, print/PDF export, and a cozy dark mode.
+A note-taking app that looks like a physical book on your desk. Each notebook
+has colored binder tabs on the side, one per class or topic, and inside each
+section you write pages with rich text, highlights, tags, and tables.
 
-Runs in the browser (localStorage) and as an Electron desktop app (SQLite).
+Everything is stored locally on your computer. No account, no cloud, no
+subscription. It is open source and free.
 
 <p align="center">
   <img src="docs/screenshots/light.png" alt="Desk Notebook in light mode" width="49%" />
   <img src="docs/screenshots/dark.png" alt="Desk Notebook in dark mode" width="49%" />
 </p>
 
-## Quick start (browser preview)
+## Download
+
+**Windows**: download `Desk-Notebook-Setup-x.y.z.exe` from the
+[releases page](https://github.com/ZamoRzgar/Desk-Notebook/releases) and run
+it. Windows may show a "protected your PC" warning because the app is not
+code-signed. Click "More info", then "Run anyway". This is normal for small
+independent apps.
+
+**Linux**: two choices from the same releases page.
+
+- `.deb` (Ubuntu, Mint, Debian): `sudo apt install ./desk-notebook_*_amd64.deb`
+- AppImage (any distro): download it, `chmod +x`, and run the file.
+
+**In China**: download from the Gitee mirror instead:
+[gitee.com/zamo97/Desk-Notebook](https://gitee.com/zamo97/Desk-Notebook)
+
+The app checks for updates when it starts and updates itself. Your notes live
+in your own user folder and are never touched by updates or uninstalls.
+
+## What it can do
+
+- Open-book layout with ruled paper, a leather-style cover, and colored binder
+  tabs you can rename and recolor. One book can hold every class or project.
+- Simple rich text editor: bold, italic, headings, lists, and tables. Pasting
+  a table from a web page keeps its structure, and wide tables shrink to fit
+  the page.
+- Math symbol picker (integrals, Greek letters, arrows, superscripts) for
+  class notes.
+- Four highlight colors, tuned to stay readable in both light and dark mode.
+- Tags on every page, with a filter to find them later.
+- Instant full-text search across the whole book.
+- Export a single page or a whole section to PDF through the print dialog.
+- Dark mode for late nights.
+
+## Run from source
+
+You need Node.js 22 or newer.
 
 ```bash
 npm install
 npm run dev
 ```
 
-Open **http://localhost:5173/**. On first run the app seeds a sample book
-("Semester 1") with Math, Physics, Literature, and History sections.
+Open http://localhost:5173/ in a browser. The app starts with a sample book
+("Semester 1") so you can look around before writing your own notes.
 
-## Desktop app (Electron)
+To run it as a real desktop window:
 
 ```bash
-npm install
 npm run build
-npm run electron:start        # serves the production build in Electron
+npm run electron:start
 ```
 
-Live-reload development session:
+## Build the installers
+
+Linux (AppImage and .deb):
 
 ```bash
-npm run dev                                            # terminal 1
-VITE_DEV_SERVER_URL=http://localhost:5173 npm run electron:start   # terminal 2
+npm run dist:linux
 ```
 
-`npm run electron:dev` is a shortcut for `npm run build && electron .`.
-
-## Install as desktop app (Linux)
+If GitHub downloads are blocked on your network, set these mirrors first:
 
 ```bash
-npm run dist:linux     # type-check + vite build + electron-builder (AppImage + unpacked dir)
+export ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/
+export ELECTRON_BUILDER_BINARIES_MIRROR=https://npmmirror.com/mirrors/electron-builder-binaries/
 ```
 
-Artifacts land in `release/`:
-- `release/Desk Notebook-<version>.AppImage` — portable single-file app
-- `release/linux-unpacked/` — unpacked build (`dir` target), fallback if the
-  AppImage can't run (e.g. no FUSE)
-
-Install the AppImage and register a launcher:
+The Windows installer is built by GitHub Actions (see
+`.github/workflows/release.yml`), because the SQLite module has to be compiled
+on Windows. Push a version tag to trigger a build:
 
 ```bash
-mkdir -p ~/Applications ~/.local/share/applications ~/.local/share/icons
-cp "release/Desk Notebook-"*.AppImage ~/Applications/desk-notebook.AppImage
-chmod +x ~/Applications/desk-notebook.AppImage
-cp build/icon.png ~/.local/share/icons/desk-notebook.png
-
-cat > ~/.local/share/applications/desk-notebook.desktop <<'EOF'
-[Desktop Entry]
-Type=Application
-Name=Desk Notebook
-Comment=A cozy book-style notebook
-Exec=~/Applications/desk-notebook.AppImage
-Icon=~/.local/share/icons/desk-notebook.png
-Terminal=false
-Categories=Office;Utility;
-Keywords=notes;notebook;writing;
-StartupWMClass=desk-notebook
-EOF
-update-desktop-database ~/.local/share/applications
+npm version patch
+git push origin main --tags
 ```
 
-"Desk Notebook" then appears in the apps menu (log out/in if it doesn't show
-up immediately). To update later, rebuild and overwrite
-`~/Applications/desk-notebook.AppImage` — user data lives separately in
-`~/.config/desk-notebook/` and is untouched.
+A few minutes later a draft release appears with the `.exe`, AppImage, and
+`.deb`. Publish it, and every installed app updates itself on next start.
 
-Notes:
-- electron-builder downloads (Electron, appimagetool) honor the
-  `ELECTRON_MIRROR` / `ELECTRON_BUILDER_BINARIES_MIRROR` env vars — useful on
-  networks where GitHub releases are unreachable (e.g.
-  `https://npmmirror.com/mirrors/electron/` and
-  `https://npmmirror.com/mirrors/electron-builder-binaries/`).
-- `npmRebuild` is disabled in the builder config; better-sqlite3 must already
-  be compiled for Electron's ABI (see the rebuild command below) before
-  packaging.
-- The launcher uses no `--no-sandbox` flag: the packaged app runs its sandbox
-  through user namespaces on this machine. If a different machine rejects the
-  sandbox, append `--no-sandbox` to the `Exec` line as a last resort.
+## Tech stack
 
+Electron, React, TypeScript, Vite, Tailwind CSS, TipTap (the editor), and
+better-sqlite3 (storage).
 
-Data lives in a SQLite database at Electron's `userData` path
-(e.g. `~/.config/desk-notebook/desk-notebook.db` on Linux). The renderer uses
-the SQLite backend automatically when running inside Electron
-(`window.deskNotebook` bridge) and falls back to `localStorage` in the browser.
+## Notes and limitations
 
-### Native module note
-
-`better-sqlite3` must be compiled against Electron's headers (not Node's).
-If you reinstall dependencies, run:
-
-```bash
-cd node_modules/better-sqlite3 && npx node-gyp rebuild --release \
-  --dist-url=https://electronjs.org/headers --target=$(node -p "require('electron/package.json').version")
-```
-
-(If GitHub is unreachable, any Electron mirror works as `--dist-url`, e.g.
-`https://npmmirror.com/mirrors/electron/`.)
-
-For headless/diagnostics runs: `DN_DEBUG=1 npm run electron:start` pipes
-renderer console output and storage state to stdout.
-
-## Scripts
-
-| Command                  | What it does                                            |
-| ------------------------ | ------------------------------------------------------- |
-| `npm run dev`            | Vite dev server — browser preview                       |
-| `npm run build`          | Type-check (`tsc`) + production build to `dist/`        |
-| `npm run preview`        | Serve the production build in a browser                 |
-| `npm run electron:start` | Launch Electron against `dist/` (build first)           |
-| `npm run electron:dev`   | Build, then launch Electron                             |
-| `npm run dist`           | Build + package with electron-builder (all platforms)   |
-| `npm run dist:linux`     | Build + package AppImage and unpacked dir to `release/` |
-
-## Features
-
-- **Book shell UI** — open-book layout, leather cover, ruled paper, colored
-  binder tabs on the right edge, dark mode ("book at night", persisted).
-- **Management** — create/rename/delete books (header icons next to the book
-  selector), create sections (+ tab), rename/recolor sections (double-click a
-  tab or the pencil in the page-list header), delete sections and pages with a
-  confirm dialog (hover a page in the list). The last remaining book cannot be
-  deleted.
-- **Editor** — TipTap rich text: bold/italic/strikethrough, H1/H2, bullet and
-  ordered lists, multi-color highlight (yellow/green/pink/blue) + clear.
-  Autosaves with a 500 ms debounce.
-- **Tags** — chips on each page, add/remove inline, header filter dims
-  non-matching pages.
-- **Search** — header search box, instant full-text search (title + content)
-  across the active book; results show section + snippet with the match
-  marked; click (or Enter for the top hit) jumps to the page.
-- **Export** — printer icon on the page: print the current page or the whole
-  section. Uses a print stylesheet + `window.print()`, so "Save as PDF" works
-  in both browser and Electron. Chrome is stripped; highlights stay colored.
-
-## Stack
-
-- Electron 38 + React 19 + TypeScript + Vite 7
-- Tailwind CSS 4 (`@tailwindcss/vite`, class-based dark mode)
-- TipTap 3 (`@tiptap/react`, StarterKit, `@tiptap/extension-highlight`)
-- better-sqlite3 (Electron main process only)
-
-## Layout
-
-```
-electron/
-  main.cjs           BrowserWindow + SQLite (kv table) + IPC handlers
-  preload.cjs        window.deskNotebook bridge (typed async storage API)
-src/
-  types.ts           Book / Section / Page models, color palettes
-  lib/
-    search.ts        Plain-text extraction + instant full-text search
-    renderHtml.ts    TipTap JSON → HTML (for printing)
-  store/
-    storage.ts       StorageBackend interface; Electron (IPC) + localStorage impls
-    seed.ts          First-run sample data
-    AppContext.tsx   React context: state, selection, actions, persistence, theme
-  components/
-    HeaderBar.tsx    Title, search, book selector + book management, tag filter, theme
-    BookView.tsx     The open-book shell
-    SectionTabs.tsx  Binder tabs (double-click to edit)
-    PageList.tsx     Left page: TOC, hover-delete, section edit/delete
-    PageEditor.tsx   Right page: TipTap editor, toolbar, tags, export menu
-    SearchBox.tsx    Search input + results dropdown
-    PrintView.tsx    Print-only document (window.print pipeline)
-    SectionModal.tsx Create/edit section (name + color)
-    NameModal.tsx    Generic name dialog (books)
-    ConfirmModal.tsx Destructive-action confirmation
-    ExportMenu.tsx   Print this page / entire section
-    TagChip.tsx
-```
-
-## Known limitations
-
-- Storage is whole-library JSON in a single SQLite `kv` row (fine at this
-  scale; per-page tables are a future optimization). Browser mode is limited
-  by the ~5 MB localStorage cap.
-- No undo for deletions; no drag-to-reorder for pages/sections.
-- Search covers the active book only.
-
-## Releases, installers & auto-updates
-
-Electron Builder produces three installers (see the `build` section of
-`package.json`): Windows `nsis` (`.exe` setup wizard), Linux `AppImage`, and
-Linux `.deb`. The packaged app includes `electron-updater`, which checks
-GitHub Releases on startup and offers to restart into a new version
-(notes data is never touched by updates). **Auto-updates require the GitHub
-repo to be public.**
-
-Windows builds run in CI (GitHub Actions) because the better-sqlite3 native
-module must be compiled on Windows; see `.github/workflows/release.yml`.
-
-To cut a release:
-
-```bash
-# 1. commit everything, then bump the version + tag
-npm version patch          # or minor / major — updates package.json + tags vX.Y.Z
-git push origin main --follow-tags
-
-# 2. GitHub Actions builds Windows + Linux installers and publishes them
-#    to a GitHub Release automatically. Installed apps pick it up on next start.
-```
-
-Local Linux-only build (needs the npmmirror env vars on networks where
-GitHub is proxied):
-
-```bash
-ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/ \
-ELECTRON_BUILDER_BINARIES_MIRROR=https://npmmirror.com/mirrors/electron-builder-binaries/ \
-npx electron-builder --linux
-# outputs: release/Desk Notebook-<version>.AppImage, release/desk-notebook_<version>_amd64.deb
-```
-
-Install the `.deb` system-wide with `sudo apt install ./release/desk-notebook_*_amd64.deb`.
+- Notes save automatically as you type.
+- The browser preview uses localStorage and is only for trying the app. The
+  desktop app uses a real SQLite database.
+- Deleted pages cannot be undone yet, and search covers one book at a time.
+- Found a bug or have an idea? Open an issue on GitHub or Gitee.
