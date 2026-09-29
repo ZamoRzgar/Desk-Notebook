@@ -1,6 +1,6 @@
 {
   "name": "desk-notebook",
-  "version": "0.1.4",
+  "version": "0.1.3",
   "private": true,
   "description": "A note-taking app that looks like a physical book — binder-tab sections, rich text, highlights, and tags.",
   "author": {
