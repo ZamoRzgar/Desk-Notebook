@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { EditorContent, useEditor, type Editor } from '@tiptap/react';
+import { EditorContent, useEditor, useEditorState, type Editor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Highlight from '@tiptap/extension-highlight';
 import { TableKit } from '@tiptap/extension-table';
@@ -42,25 +42,41 @@ function ToolbarButton({
 }
 
 function Toolbar({ editor }: { editor: Editor }) {
+  // Subscribe to every transaction so button states update the instant they
+  // change, not on the next keystroke.
+  const state = useEditorState({
+    editor,
+    selector: ({ editor: e }) => ({
+      bold: e.isActive('bold'),
+      italic: e.isActive('italic'),
+      strike: e.isActive('strike'),
+      h1: e.isActive('heading', { level: 1 }),
+      h2: e.isActive('heading', { level: 2 }),
+      bulletList: e.isActive('bulletList'),
+      orderedList: e.isActive('orderedList'),
+      table: e.isActive('table'),
+      highlightColor: (e.getAttributes('highlight').color as string | undefined) ?? null,
+    }),
+  });
   return (
     <div className="flex items-center gap-0.5 rounded-full border border-stone-900/10 bg-white/80 px-2 py-1 shadow-md backdrop-blur dark:border-white/10 dark:bg-[#1f1b16]/85">
       <ToolbarButton
         title="Bold"
-        active={editor.isActive('bold')}
+        active={state.bold}
         onClick={() => editor.chain().focus().toggleBold().run()}
       >
         <span className="font-bold">B</span>
       </ToolbarButton>
       <ToolbarButton
         title="Italic"
-        active={editor.isActive('italic')}
+        active={state.italic}
         onClick={() => editor.chain().focus().toggleItalic().run()}
       >
         <span className="font-serif italic">I</span>
       </ToolbarButton>
       <ToolbarButton
         title="Strikethrough"
-        active={editor.isActive('strike')}
+        active={state.strike}
         onClick={() => editor.chain().focus().toggleStrike().run()}
       >
         <span className="line-through">S</span>
@@ -72,14 +88,14 @@ function Toolbar({ editor }: { editor: Editor }) {
 
       <ToolbarButton
         title="Heading 1"
-        active={editor.isActive('heading', { level: 1 })}
+        active={state.h1}
         onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
       >
         <span className="font-serif font-bold">H1</span>
       </ToolbarButton>
       <ToolbarButton
         title="Heading 2"
-        active={editor.isActive('heading', { level: 2 })}
+        active={state.h2}
         onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
       >
         <span className="font-serif text-xs font-bold">H2</span>
@@ -89,7 +105,7 @@ function Toolbar({ editor }: { editor: Editor }) {
 
       <ToolbarButton
         title="Bullet list"
-        active={editor.isActive('bulletList')}
+        active={state.bulletList}
         onClick={() => editor.chain().focus().toggleBulletList().run()}
       >
         <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4">
@@ -103,7 +119,7 @@ function Toolbar({ editor }: { editor: Editor }) {
       </ToolbarButton>
       <ToolbarButton
         title="Numbered list"
-        active={editor.isActive('orderedList')}
+        active={state.orderedList}
         onClick={() => editor.chain().focus().toggleOrderedList().run()}
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="h-4 w-4">
@@ -114,7 +130,7 @@ function Toolbar({ editor }: { editor: Editor }) {
 
       <ToolbarButton
         title="Insert table"
-        active={editor.isActive('table')}
+        active={state.table}
         onClick={() =>
           editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()
         }
@@ -128,14 +144,20 @@ function Toolbar({ editor }: { editor: Editor }) {
       <div className="mx-1 h-4 w-px bg-stone-300 dark:bg-stone-600" />
 
       {HIGHLIGHT_COLORS.map((c) => {
-        const active = editor.isActive('highlight', { color: c.value });
+        const active = state.highlightColor === c.value;
         return (
           <button
             key={c.value}
             onMouseDown={(e) => e.preventDefault()}
-            onClick={() => editor.chain().focus().setHighlight({ color: c.value }).run()}
-            title={`Highlight ${c.name.toLowerCase()}`}
-            aria-label={`Highlight ${c.name.toLowerCase()}`}
+            onClick={() =>
+              // Clicking the active color again turns highlighting off, so
+              // you can go back to normal writing without the eraser.
+              active
+                ? editor.chain().focus().unsetHighlight().run()
+                : editor.chain().focus().setHighlight({ color: c.value }).run()
+            }
+            title={active ? `Stop highlighting ${c.name.toLowerCase()}` : `Highlight ${c.name.toLowerCase()}`}
+            aria-label={active ? `Stop highlighting ${c.name.toLowerCase()}` : `Highlight ${c.name.toLowerCase()}`}
             style={{ backgroundColor: c.value }}
             className={`mx-0.5 h-5 w-5 rounded-full shadow-inner transition-transform hover:scale-110 ${
               active ? 'ring-2 ring-stone-700 ring-offset-1 dark:ring-stone-200' : 'ring-1 ring-stone-900/15'
