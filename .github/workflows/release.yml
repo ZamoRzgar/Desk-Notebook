@@ -26,8 +26,7 @@ jobs:
           cache: npm
 
       - run: npm ci
-      - run: npm run build          # <-- missing: produces dist/
-      - run: npx electron-builder --publish always
+      - run: npm run build          # tsc + vite -> produces dist/ that electron-builder packs
 
       # electron-builder --publish creates the GitHub Release (if missing) and
       # uploads the installers + update manifests (latest.yml / latest-linux.yml).

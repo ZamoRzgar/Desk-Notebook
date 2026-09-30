@@ -15,6 +15,7 @@
     "preview": "vite preview",
     "electron:start": "electron .",
     "electron:dev": "npm run build && electron .",
+    "postinstall": "electron-builder install-app-deps",
     "dist": "npm run build && electron-builder",
     "dist:linux": "npm run build && electron-builder --linux"
   },
@@ -54,6 +55,9 @@
       "node_modules/better-sqlite3/**"
     ],
     "npmRebuild": true,
+    "electronDownload": {
+      "mirror": "https://npmmirror.com/mirrors/electron/"
+    },
     "publish": {
       "provider": "github",
       "owner": "ZamoRzgar",
