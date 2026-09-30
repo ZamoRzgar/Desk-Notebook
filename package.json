@@ -21,11 +21,13 @@
   },
   "dependencies": {
     "@tiptap/extension-highlight": "^3.0.0",
+    "@tiptap/extension-mathematics": "^3.31.3",
     "@tiptap/extension-table": "^3.31.3",
     "@tiptap/react": "^3.0.0",
     "@tiptap/starter-kit": "^3.0.0",
     "better-sqlite3": "^13.0.3",
     "electron-updater": "^6.8.9",
+    "katex": "^0.18.9",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },

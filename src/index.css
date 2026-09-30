@@ -162,6 +162,25 @@
   content: none;
 }
 
+/* ---------- math (KaTeX) ---------- */
+.tiptap .katex,
+.print-content .katex {
+  font-size: 1.05em;
+}
+/* The little input box shown while editing an equation inline. */
+.tiptap .Tiptap-mathematics-editor {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.85em;
+  color: inherit;
+  border: 1px solid rgba(122, 96, 60, 0.4);
+  border-radius: 0.25rem;
+  padding: 0 0.25em;
+}
+.print-content .block-math {
+  text-align: center;
+  margin: 0.5rem 0;
+}
+
 /* ---------- transitions ---------- */
 @keyframes page-in {
   from {

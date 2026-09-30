@@ -3,6 +3,9 @@ import { EditorContent, useEditor, useEditorState, type Editor } from '@tiptap/r
 import StarterKit from '@tiptap/starter-kit';
 import Highlight from '@tiptap/extension-highlight';
 import { TableKit } from '@tiptap/extension-table';
+import { Mathematics } from '@tiptap/extension-mathematics';
+import { Fragment, Node as PMNode, Slice } from '@tiptap/pm/model';
+import type { Schema } from '@tiptap/pm/model';
 import type { JSONContent } from '@tiptap/core';
 import type { Page } from '../types';
 import { HIGHLIGHT_COLORS } from '../types';
@@ -12,6 +15,117 @@ import { ExportMenu } from './ExportMenu';
 import { SymbolMenu } from './SymbolMenu';
 
 const AUTOSAVE_MS = 500;
+
+/**
+ * Split a plain text segment into inline nodes, converting markdown-ish
+ * **bold** and `code` spans into real marks.
+ */
+function inlineJSONFromText(text: string): JSONContent[] {
+  const out: JSONContent[] = [];
+  const re = /\*\*([^*]+)\*\*|`([^`\n]+)`/g;
+  let last = 0;
+  for (const m of text.matchAll(re)) {
+    if (m.index > last) out.push({ type: 'text', text: text.slice(last, m.index) });
+    if (m[1] !== undefined) out.push({ type: 'text', text: m[1], marks: [{ type: 'bold' }] });
+    else out.push({ type: 'text', text: m[2], marks: [{ type: 'code' }] });
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) out.push({ type: 'text', text: text.slice(last) });
+  return out.length ? out : [{ type: 'text', text }];
+}
+
+/** Split a line into inline nodes, turning $...$ spans into inline math. */
+function inlineJSONWithMath(line: string): JSONContent[] {
+  const out: JSONContent[] = [];
+  let last = 0;
+  for (const m of line.matchAll(/\$([^$\n]+)\$/g)) {
+    if (m.index! > last) out.push(...inlineJSONFromText(line.slice(last, m.index)));
+    out.push({ type: 'inlineMath', attrs: { latex: m[1].trim() } });
+    last = m.index! + m[0].length;
+  }
+  if (last < line.length) out.push(...inlineJSONFromText(line.slice(last)));
+  return out;
+}
+
+/**
+ * Convert pasted plain text with $...$ LaTeX into TipTap JSON: each line
+ * becomes a paragraph, and $-delimited spans become inline math nodes.
+ */
+function pastedTextToJSON(text: string): JSONContent[] {
+  const nodes: JSONContent[] = [];
+  for (const line of text.split('\n')) {
+    if (!line.trim()) continue;
+    const inline = inlineJSONWithMath(line);
+    if (inline.length) nodes.push({ type: 'paragraph', content: inline });
+  }
+  return nodes;
+}
+
+/**
+ * Convert a pasted markdown pipe table (as copied from AI chat answers) into
+ * a real table, converting $...$ math, bold markers and `code` spans inside
+ * cells.
+ */
+function markdownTableToJSON(text: string): JSONContent | null {
+  const lines = text
+    .split('\n')
+    .map((l) => l.trim())
+    .filter((l) => l.startsWith('|') && l.endsWith('|') && l.length > 2);
+  if (lines.length < 2) return null;
+
+  const parseRow = (l: string) =>
+    l
+      .slice(1, -1)
+      // split on unescaped pipes only (markdown uses \| for a literal pipe)
+      .split(/(?<!\\)\|/)
+      .map((c) => c.replace(/\\\|/g, '|').trim());
+
+  const header = parseRow(lines[0]);
+  const separator = parseRow(lines[1]);
+  const isSeparator =
+    separator.length > 0 && separator.every((c) => /^:?-{1,}:?$/.test(c) || c === '');
+  if (!isSeparator) return null;
+
+  const mkCell = (content: string, isHeader: boolean): JSONContent => ({
+    type: isHeader ? 'tableHeader' : 'tableCell',
+    content: [{ type: 'paragraph', content: inlineJSONWithMath(content) }],
+  });
+
+  return {
+    type: 'table',
+    content: [
+      { type: 'tableRow', content: header.map((c) => mkCell(c, true)) },
+      ...lines.slice(2).map((l) => {
+        const cells = parseRow(l);
+        return { type: 'tableRow', content: header.map((_, i) => mkCell(cells[i] ?? '', false)) };
+      }),
+    ],
+  };
+}
+
+/**
+ * Recursively split pasted text nodes containing $...$ into text + inline
+ * math nodes. Returns the original node when there is nothing to change.
+ */
+function transformMathInNode(node: PMNode, schema: Schema): PMNode | Fragment | null {
+  if (node.isText && node.text) {
+    if (!node.text.includes('$')) return node;
+    const parts = inlineJSONWithMath(node.text).map((j) =>
+      j.type === 'text' ? schema.nodeFromJSON(j) : schema.node('inlineMath', j.attrs),
+    );
+    return Fragment.fromArray(parts);
+  }
+  if (node.content && node.content.size) {
+    const parts: PMNode[] = [];
+    node.content.forEach((child) => {
+      const r = transformMathInNode(child, schema);
+      if (r instanceof PMNode) parts.push(r);
+      else if (r) r.forEach((n) => parts.push(n));
+    });
+    return node.copy(Fragment.fromArray(parts));
+  }
+  return node;
+}
 
 function ToolbarButton({
   onClick,
@@ -228,6 +342,7 @@ export function PageEditor({ page }: { page: Page }) {
   const timerRef = useRef<number | null>(null);
   const updateRef = useRef(updatePageContent);
   updateRef.current = updatePageContent;
+  const editorRef = useRef<Editor | null>(null);
 
   const editor = useEditor({
     extensions: [
@@ -235,12 +350,51 @@ export function PageEditor({ page }: { page: Page }) {
       Highlight.configure({ multicolor: true }),
       // Fluid tables (no fixed column widths) so they shrink to fit the page.
       TableKit.configure({ table: { resizable: false } }),
+      // Renders $...$ and $$...$$ LaTeX as real math (KaTeX).
+      Mathematics,
     ],
     content: page.content,
     editorProps: {
       attributes: {
         class:
           'tiptap paper-lines min-h-[55vh] font-serif text-[17px] text-[#3d362b] dark:text-[#e3d7bd] focus:outline-none',
+      },
+      // Pasted text containing $...$ LaTeX (e.g. copied from chat answers)
+      // is converted to rendered math instead of literal dollar signs, and
+      // markdown pipe tables become real tables. Pastes that already carry a
+      // real HTML table keep their structure; transformPasted below converts
+      // the $...$ inside their cells.
+      handlePaste: (_view, event) => {
+        const html = event.clipboardData?.getData('text/html') ?? '';
+        const text = event.clipboardData?.getData('text/plain') ?? '';
+        if (/<table/i.test(html)) return false;
+
+        const mdTable = markdownTableToJSON(text);
+        if (mdTable) {
+          event.preventDefault();
+          editorRef.current?.chain().focus().insertContent(mdTable).run();
+          return true;
+        }
+        if (!/\$[^$\n]+\$/.test(text)) return false;
+        const nodes = pastedTextToJSON(text);
+        if (!nodes.length) return false;
+        event.preventDefault();
+        editorRef.current?.chain().focus().insertContent(nodes).run();
+        return true;
+      },
+      // Post-parse pass: split any pasted text node containing $...$ into
+      // text + inline math nodes, wherever it ended up (including cells).
+      transformPasted: (slice, view) => {
+        const hasDollar = slice.content.textBetween(0, slice.content.size, '\n\n').includes('$');
+        if (!hasDollar) return slice;
+        const schema = view.state.schema;
+        const parts: PMNode[] = [];
+        slice.content.forEach((child) => {
+          const r = transformMathInNode(child, schema);
+          if (r instanceof PMNode) parts.push(r);
+          else if (r) r.forEach((n) => parts.push(n));
+        });
+        return new Slice(Fragment.fromArray(parts), slice.openStart, slice.openEnd);
       },
     },
     onUpdate: ({ editor: e }) => {
@@ -254,6 +408,7 @@ export function PageEditor({ page }: { page: Page }) {
       }, AUTOSAVE_MS);
     },
   });
+  editorRef.current = editor;
 
   // Flush any pending autosave when leaving the page / unmounting.
   useEffect(() => {

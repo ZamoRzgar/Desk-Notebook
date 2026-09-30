@@ -1,4 +1,5 @@
 import type { JSONContent } from '@tiptap/core';
+import katex from 'katex';
 
 function escapeHtml(s: string): string {
   return s
@@ -36,6 +37,8 @@ function renderNode(node: JSONContent): string {
       for (const mark of node.marks ?? []) out = renderMark(out, mark);
       return out;
     }
+    case 'inlineMath':
+      return katex.renderToString(String(node.attrs?.latex ?? ''), { throwOnError: false });
     case 'paragraph':
       return `<p>${children || '<br>'}</p>`;
     case 'heading': {
@@ -56,6 +59,11 @@ function renderNode(node: JSONContent): string {
       return '<br>';
     case 'codeBlock':
       return `<pre><code>${children}</code></pre>`;
+    case 'blockMath':
+      return `<div class="block-math">${katex.renderToString(String(node.attrs?.latex ?? ''), {
+        throwOnError: false,
+        displayMode: true,
+      })}</div>`;
     case 'table':
       return `<table><tbody>${children}</tbody></table>`;
     case 'tableRow':

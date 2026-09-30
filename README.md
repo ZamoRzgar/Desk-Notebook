@@ -39,7 +39,8 @@ in your own user folder and are never touched by updates or uninstalls.
   a table from a web page keeps its structure, and wide tables shrink to fit
   the page.
 - Math symbol picker (integrals, Greek letters, arrows, superscripts) for
-  class notes.
+  class notes. Pasted `$...$` LaTeX (e.g. copied from AI chat answers)
+  renders as real equations, in the editor and in PDF exports.
 - Four highlight colors, tuned to stay readable in both light and dark mode.
 - Tags on every page, with a filter to find them later.
 - Instant full-text search across the whole book.
