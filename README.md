@@ -1,8 +1,8 @@
 # Desk Notebook
 
 A note-taking app that looks like a physical book on your desk. Each notebook
-has colored binder tabs on the side, one per class or topic, and inside each
-section you write pages with rich text, highlights, tags, and tables.
+has colored binder tabs on the side, one per or topic, and inside each
+section you write pages with text, highlights, tags, and tables.
 
 Everything is stored locally on your computer. No account, no cloud, no
 subscription. It is open source and free.
