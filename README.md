@@ -3,7 +3,8 @@
 A note-taking app that looks like a book on your desk. Give each class or
 project its own colored tab, then write pages inside it.
 
-Your notes stay on your computer. No account, no cloud, free.
+Your notes stay on your computer. No account, no cloud. Free and open source
+under the [MIT license](LICENSE).
 
 <p align="center">
   <img src="docs/screenshots/light.png" alt="Desk Notebook in light mode" width="49%" />
