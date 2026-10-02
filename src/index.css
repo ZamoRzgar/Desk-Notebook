@@ -94,6 +94,127 @@
   padding-left: 1rem;
   font-style: italic;
 }
+
+/* ---------- code ---------- */
+.tiptap,
+.print-content {
+  --code-font: ui-monospace, "JetBrains Mono", "Cascadia Code", "Fira Code", Menlo, Consolas,
+    "DejaVu Sans Mono", monospace;
+}
+/* Inline `code`: a small tinted chip that sits on the ruled line. */
+.tiptap :not(pre) > code {
+  font-family: var(--code-font);
+  font-size: 0.84em;
+  padding: 0.12em 0.38em;
+  border-radius: 0.3rem;
+  background: rgba(122, 96, 60, 0.12);
+  color: #8a4426;
+}
+.dark .tiptap :not(pre) > code {
+  background: rgba(233, 223, 200, 0.1);
+  color: #eab68a;
+}
+/* Code blocks: an opaque dark card, so the paper's ruled lines stop at its
+   edges. Long lines scroll inside the card instead of widening the page. */
+.tiptap pre {
+  position: relative;
+  margin: 0.75rem 0;
+  padding: 0.85rem 1.1rem;
+  border-radius: 0.6rem;
+  background: #2b2620;
+  border: 1px solid rgba(0, 0, 0, 0.25);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 2px 6px -2px rgba(60, 40, 15, 0.35);
+  color: #e9dfc8;
+  font-family: var(--code-font);
+  font-size: 0.8em;
+  line-height: 1.65;
+  white-space: pre;
+  tab-size: 4;
+  overflow-x: auto;
+  caret-color: #f5d58f;
+}
+/* ProseMirror's own stylesheet sets pre-wrap on pre; keep lines intact. */
+.tiptap.ProseMirror pre {
+  white-space: pre;
+}
+.dark .tiptap pre {
+  background: #1b1814;
+  border-color: rgba(233, 223, 200, 0.1);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+.tiptap pre code {
+  font: inherit;
+  background: none;
+  padding: 0;
+  color: inherit;
+}
+.tiptap pre ::selection {
+  background: rgba(245, 158, 11, 0.35);
+}
+.tiptap pre::-webkit-scrollbar {
+  height: 6px;
+}
+.tiptap pre::-webkit-scrollbar-thumb {
+  background: rgba(233, 223, 200, 0.2);
+  border-radius: 3px;
+}
+/* Syntax colors: warm, low-glare tones that match the paper palette. */
+.tiptap pre .hljs-comment,
+.tiptap pre .hljs-quote {
+  color: #8f8574;
+  font-style: italic;
+}
+.tiptap pre .hljs-keyword,
+.tiptap pre .hljs-selector-tag,
+.tiptap pre .hljs-doctag,
+.tiptap pre .hljs-meta .hljs-keyword {
+  color: #e39a62;
+}
+.tiptap pre .hljs-string,
+.tiptap pre .hljs-regexp,
+.tiptap pre .hljs-addition,
+.tiptap pre .hljs-attr-value {
+  color: #b1c77f;
+}
+.tiptap pre .hljs-number,
+.tiptap pre .hljs-literal,
+.tiptap pre .hljs-symbol,
+.tiptap pre .hljs-bullet {
+  color: #e8c372;
+}
+.tiptap pre .hljs-title,
+.tiptap pre .hljs-section,
+.tiptap pre .hljs-function .hljs-title,
+.tiptap pre .hljs-title.function_ {
+  color: #8fc1d9;
+}
+.tiptap pre .hljs-built_in,
+.tiptap pre .hljs-type,
+.tiptap pre .hljs-title.class_ {
+  color: #d3a6dc;
+}
+.tiptap pre .hljs-attr,
+.tiptap pre .hljs-attribute,
+.tiptap pre .hljs-property,
+.tiptap pre .hljs-name,
+.tiptap pre .hljs-tag {
+  color: #93cfc4;
+}
+.tiptap pre .hljs-meta,
+.tiptap pre .hljs-variable.language_ {
+  color: #c0a982;
+}
+.tiptap pre .hljs-deletion {
+  color: #e57a72;
+}
+.tiptap pre .hljs-emphasis {
+  font-style: italic;
+}
+.tiptap pre .hljs-strong {
+  font-weight: 700;
+}
 .tiptap mark {
   padding: 0.05em 0.25em;
   border-radius: 0.25rem;
@@ -284,6 +405,27 @@
     color: #1c1917;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
+  }
+  .print-content pre {
+    font-family: var(--code-font);
+    font-size: 0.75rem;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    background: #f5f2ea;
+    border: 1px solid #d6d3d1;
+    border-radius: 4px;
+    padding: 0.6em 0.8em;
+    margin: 0.5rem 0 0.9rem;
+    break-inside: avoid;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .print-content :not(pre) > code {
+    font-family: var(--code-font);
+    font-size: 0.85em;
+    background: #f0ece1;
+    border-radius: 3px;
+    padding: 0.05em 0.3em;
   }
   .print-content table {
     border-collapse: collapse;

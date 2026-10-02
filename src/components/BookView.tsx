@@ -28,7 +28,7 @@ export function BookView() {
             </aside>
 
             {/* right page — active note */}
-            <section className="paper relative flex-1 shadow-[inset_28px_0_28px_-28px_rgba(90,64,30,0.45),inset_-22px_0_26px_-24px_rgba(90,64,30,0.35)] dark:shadow-[inset_28px_0_28px_-28px_rgba(0,0,0,0.7),inset_-22px_0_26px_-24px_rgba(0,0,0,0.5)]">
+            <section className="paper relative min-w-0 flex-1 shadow-[inset_28px_0_28px_-28px_rgba(90,64,30,0.45),inset_-22px_0_26px_-24px_rgba(90,64,30,0.35)] dark:shadow-[inset_28px_0_28px_-28px_rgba(0,0,0,0.7),inset_-22px_0_26px_-24px_rgba(0,0,0,0.5)]">
               {page ? (
                 <PageEditor key={page.id} page={page} />
               ) : (

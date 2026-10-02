@@ -4,6 +4,8 @@ import StarterKit from '@tiptap/starter-kit';
 import Highlight from '@tiptap/extension-highlight';
 import { TableKit } from '@tiptap/extension-table';
 import { Mathematics } from '@tiptap/extension-mathematics';
+import { CodeBlockLowlight } from '@tiptap/extension-code-block-lowlight';
+import { common, createLowlight } from 'lowlight';
 import { Fragment, Node as PMNode, Slice } from '@tiptap/pm/model';
 import type { Schema } from '@tiptap/pm/model';
 import type { JSONContent } from '@tiptap/core';
@@ -15,6 +17,9 @@ import { ExportMenu } from './ExportMenu';
 import { SymbolMenu } from './SymbolMenu';
 
 const AUTOSAVE_MS = 500;
+
+/** Syntax highlighter for code blocks (~35 common languages). */
+const lowlight = createLowlight(common);
 
 /**
  * Split a plain text segment into inline nodes, converting markdown-ish
@@ -47,19 +52,66 @@ function inlineJSONWithMath(line: string): JSONContent[] {
   return out;
 }
 
+function codeBlockJSON(code: string, language: string | null): JSONContent {
+  return {
+    type: 'codeBlock',
+    attrs: { language },
+    content: code ? [{ type: 'text', text: code }] : undefined,
+  };
+}
+
+const FENCE = /^\s*```\s*([\w+#.-]*)\s*$/;
+
+/** True when pasted plain text looks like markdown worth converting. */
+function looksLikeMarkdown(text: string): boolean {
+  return (
+    /\$[^$\n]+\$/.test(text) ||
+    text.split('\n').some((l) => FENCE.test(l)) ||
+    markdownTableToJSON(text) !== null
+  );
+}
+
 /**
- * Convert pasted plain text with $...$ LaTeX into TipTap JSON: each line
- * becomes a paragraph, and $-delimited spans become inline math nodes.
+ * Convert pasted plain text (typically an AI chat answer) into TipTap JSON:
+ * ``` fences become code blocks, pipe tables become tables, and every other
+ * line becomes a paragraph with $...$ math, bold and `code` converted.
  */
 function pastedTextToJSON(text: string): JSONContent[] {
   const nodes: JSONContent[] = [];
-  for (const line of text.split('\n')) {
-    if (!line.trim()) continue;
-    const inline = inlineJSONWithMath(line);
-    if (inline.length) nodes.push({ type: 'paragraph', content: inline });
+  const lines = text.replace(/\r\n?/g, '\n').split('\n');
+  let i = 0;
+  while (i < lines.length) {
+    const fence = lines[i].match(FENCE);
+    if (fence) {
+      const body: string[] = [];
+      i++;
+      while (i < lines.length && !FENCE.test(lines[i])) body.push(lines[i++]);
+      i++; // closing fence (or end of text)
+      nodes.push(codeBlockJSON(body.join('\n'), fence[1] || null));
+      continue;
+    }
+    if (lines[i].trim().startsWith('|')) {
+      const block: string[] = [];
+      while (i < lines.length && lines[i].trim().startsWith('|')) block.push(lines[i++]);
+      const table = markdownTableToJSON(block.join('\n'));
+      if (table) nodes.push(table);
+      else block.forEach((l) => nodes.push({ type: 'paragraph', content: inlineJSONWithMath(l) }));
+      continue;
+    }
+    if (lines[i].trim()) nodes.push({ type: 'paragraph', content: inlineJSONWithMath(lines[i]) });
+    i++;
   }
   return nodes;
 }
+
+/** VS Code language ids that lowlight knows under a different name. */
+const VSCODE_LANG: Record<string, string> = {
+  typescriptreact: 'typescript',
+  javascriptreact: 'javascript',
+  shellscript: 'bash',
+  jsonc: 'json',
+  plaintext: 'plaintext',
+};
 
 /**
  * Convert a pasted markdown pipe table (as copied from AI chat answers) into
@@ -108,11 +160,15 @@ function markdownTableToJSON(text: string): JSONContent | null {
  * math nodes. Returns the original node when there is nothing to change.
  */
 function transformMathInNode(node: PMNode, schema: Schema): PMNode | Fragment | null {
+  // Never touch code: `$HOME` in a shell snippet is not an equation.
+  if (node.type.spec.code) return node;
   if (node.isText && node.text) {
-    if (!node.text.includes('$')) return node;
-    const parts = inlineJSONWithMath(node.text).map((j) =>
-      j.type === 'text' ? schema.nodeFromJSON(j) : schema.node('inlineMath', j.attrs),
-    );
+    if (!node.text.includes('$') || node.marks.some((m) => m.type.spec.code)) return node;
+    const parts = inlineJSONWithMath(node.text).map((j) => {
+      if (j.type !== 'text') return schema.node('inlineMath', j.attrs);
+      const textNode = schema.nodeFromJSON(j);
+      return textNode.mark(node.marks.reduce((set, m) => m.addToSet(set), textNode.marks));
+    });
     return Fragment.fromArray(parts);
   }
   if (node.content && node.content.size) {
@@ -169,6 +225,7 @@ function Toolbar({ editor }: { editor: Editor }) {
       bulletList: e.isActive('bulletList'),
       orderedList: e.isActive('orderedList'),
       table: e.isActive('table'),
+      codeBlock: e.isActive('codeBlock'),
       highlightColor: (e.getAttributes('highlight').color as string | undefined) ?? null,
     }),
   });
@@ -239,6 +296,16 @@ function Toolbar({ editor }: { editor: Editor }) {
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="h-4 w-4">
           <path d="M9 5h12M9 12h12M9 19h12" />
           <path d="M3.5 4.5 4.5 4v3.5M3 11.2c.3-.6 1-1 1.6-.8.7.2 1 1 .6 1.6-.3.5-1.4 1.4-2 2h2.3M3.4 17.3c.2-.4.8-.7 1.3-.6.8.1 1.2.9.8 1.6-.2.4-.6.6-1 .7.4.1.8.3 1 .7.4.7 0 1.5-.8 1.6-.5.1-1.1-.2-1.3-.6" strokeWidth="1.4" />
+        </svg>
+      </ToolbarButton>
+
+      <ToolbarButton
+        title="Code block"
+        active={state.codeBlock}
+        onClick={() => editor.chain().focus().toggleCodeBlock().run()}
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+          <path d="m8 7-5 5 5 5M16 7l5 5-5 5M13.5 4.5l-3 15" />
         </svg>
       </ToolbarButton>
 
@@ -346,7 +413,14 @@ export function PageEditor({ page }: { page: Page }) {
 
   const editor = useEditor({
     extensions: [
-      StarterKit,
+      // The plain code block is replaced by the syntax-highlighting one below.
+      StarterKit.configure({ codeBlock: false }),
+      CodeBlockLowlight.configure({
+        lowlight,
+        enableTabIndentation: true,
+        tabSize: 4,
+        HTMLAttributes: { spellcheck: 'false' },
+      }),
       Highlight.configure({ multicolor: true }),
       // Fluid tables (no fixed column widths) so they shrink to fit the page.
       TableKit.configure({ table: { resizable: false } }),
@@ -359,23 +433,38 @@ export function PageEditor({ page }: { page: Page }) {
         class:
           'tiptap paper-lines min-h-[55vh] font-serif text-[17px] text-[#3d362b] dark:text-[#e3d7bd] focus:outline-none',
       },
-      // Pasted text containing $...$ LaTeX (e.g. copied from chat answers)
-      // is converted to rendered math instead of literal dollar signs, and
-      // markdown pipe tables become real tables. Pastes that already carry a
-      // real HTML table keep their structure; transformPasted below converts
-      // the $...$ inside their cells.
-      handlePaste: (_view, event) => {
-        const html = event.clipboardData?.getData('text/html') ?? '';
-        const text = event.clipboardData?.getData('text/plain') ?? '';
-        if (/<table/i.test(html)) return false;
+      // Pasted markdown (e.g. an AI chat answer) is converted: ``` fences
+      // become code blocks, pipe tables become tables, $...$ becomes math.
+      // Pastes that already carry a real HTML table keep their structure;
+      // transformPasted below converts the $...$ inside their cells.
+      handlePaste: (view, event) => {
+        const data = event.clipboardData;
+        const html = data?.getData('text/html') ?? '';
+        const text = data?.getData('text/plain') ?? '';
+        // Inside a code block, paste raw text exactly as-is.
+        if (view.state.selection.$from.parent.type.spec.code) return false;
 
-        const mdTable = markdownTableToJSON(text);
-        if (mdTable) {
+        // Copied from VS Code: keep it as one code block in its language.
+        const vscode = data?.getData('vscode-editor-data');
+        if (vscode && text.includes('\n')) {
+          let mode: string | null = null;
+          try {
+            mode = (JSON.parse(vscode) as { mode?: string }).mode ?? null;
+          } catch {
+            /* unknown format: let the highlighter auto-detect */
+          }
+          const language = mode ? (VSCODE_LANG[mode] ?? mode) : null;
           event.preventDefault();
-          editorRef.current?.chain().focus().insertContent(mdTable).run();
+          editorRef.current
+            ?.chain()
+            .focus()
+            .insertContent(codeBlockJSON(text.replace(/\r\n?/g, '\n'), language))
+            .run();
           return true;
         }
-        if (!/\$[^$\n]+\$/.test(text)) return false;
+
+        if (/<table/i.test(html)) return false;
+        if (!looksLikeMarkdown(text)) return false;
         const nodes = pastedTextToJSON(text);
         if (!nodes.length) return false;
         event.preventDefault();
@@ -385,6 +474,7 @@ export function PageEditor({ page }: { page: Page }) {
       // Post-parse pass: split any pasted text node containing $...$ into
       // text + inline math nodes, wherever it ended up (including cells).
       transformPasted: (slice, view) => {
+        if (view.state.selection.$from.parent.type.spec.code) return slice;
         const hasDollar = slice.content.textBetween(0, slice.content.size, '\n\n').includes('$');
         if (!hasDollar) return slice;
         const schema = view.state.schema;

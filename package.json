@@ -20,6 +20,7 @@
     "dist:linux": "npm run build && electron-builder --linux"
   },
   "dependencies": {
+    "@tiptap/extension-code-block-lowlight": "^3.31.3",
     "@tiptap/extension-highlight": "^3.0.0",
     "@tiptap/extension-mathematics": "^3.31.3",
     "@tiptap/extension-table": "^3.31.3",
@@ -27,7 +28,9 @@
     "@tiptap/starter-kit": "^3.0.0",
     "better-sqlite3": "^13.0.3",
     "electron-updater": "^6.8.9",
+    "highlight.js": "^11.12.0",
     "katex": "^0.18.9",
+    "lowlight": "^3.3.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
