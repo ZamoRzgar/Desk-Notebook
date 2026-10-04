@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, Menu } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
@@ -90,6 +90,49 @@ function createWindow() {
   });
 
   win.once('ready-to-show', () => win.show());
+
+  // Right-click context menu with standard editing actions.
+  win.webContents.on('context-menu', (_event, params) => {
+    const template = [];
+
+    // Text selection actions
+    if (params.selectionText) {
+      template.push(
+        { label: 'Cut', role: 'cut', enabled: params.editFlags.canCut },
+        { label: 'Copy', role: 'copy', enabled: params.editFlags.canCopy },
+      );
+    }
+
+    // Paste is available in editable areas
+    if (params.isEditable) {
+      template.push({ label: 'Paste', role: 'paste', enabled: params.editFlags.canPaste });
+    }
+
+    // Add separator if we have actions above
+    if (template.length > 0) {
+      template.push({ type: 'separator' });
+    }
+
+    // Select All is always useful in editable content
+    if (params.isEditable || params.selectionText) {
+      template.push({ label: 'Select All', role: 'selectAll', enabled: params.editFlags.canSelectAll });
+    }
+
+    // Undo/Redo for editable areas
+    if (params.isEditable) {
+      template.push(
+        { type: 'separator' },
+        { label: 'Undo', role: 'undo', enabled: params.editFlags.canUndo },
+        { label: 'Redo', role: 'redo', enabled: params.editFlags.canRedo },
+      );
+    }
+
+    // Only show the menu if there are items
+    if (template.length > 0) {
+      const menu = Menu.buildFromTemplate(template);
+      menu.popup({ window: win });
+    }
+  });
 
   // Dev diagnostics: DN_DEBUG=1 pipes renderer console + storage state to stdout.
   if (process.env.DN_DEBUG) {
